@@ -4,7 +4,7 @@ subtitle: "The Power of Weak Learners"
 format:
   html: default
 execute:
-  echo: true
+  echo: false
   eval: true
 ---
 
@@ -185,29 +185,6 @@ print(performance_df)
 
 ## Student Analysis Section: The Power of More Trees {#student-analysis-section}
 
-**Your Task:** Create visualizations and analysis to demonstrate the power of ensemble learning. You'll need to create three key components:
-
-### 1. The Power of More Trees Visualization
-
-**Create a visualization showing:**
-- RMSE vs Number of Trees (both training and test data)
-- R-squared vs Number of Trees
-- Do not `echo` the code that creates the visualization
-
-**Add Brief Discussion of the Visualization**
-- Discuss where the most dramatic improvement in performance occurs as you add more trees, how dramatic is it?
-- Discuss diminishing returns as you add more trees
-
-::: {.callout-important}
-## 📊 Visualization Requirements
-
-Create two plots:
-1. **RMSE Plot:** Show how RMSE decreases with more trees (both training and test)
-2. **R-squared Plot:** Show how R-squared increases with more trees
-
-Use log scale on x-axis to better show the relationship across the range of tree counts.
-:::
-
 ```{r}
 #| label: rmse-plot
 #| echo: false
@@ -266,60 +243,21 @@ ggplot(performance_df) +
 ```
 
 #### Discussion: Your Analysis Here
+  The most dramatic improvement in RMSE performance occurs between 1 and 5 trees. This is quite a dramamtic change as it improves the RMSE by about 35%. There is still a noticable improvement in performance between 5 and 25 trees; however, after 25 trees, the improvement is minimal if any at all. There is a similar pattern in the R-squared plot with a large improvement between 1 and 5 trees, and a minimal improvement after 25 trees. After around 100 trees, the improvement is only around 1.5%. This suggests that for most practical applications, 100-500 trees is more than enough to achieve a good balance between performance and computational cost.
 
-<!-- 
-Add your analysis here. Consider discussing:
-- Where do you see the most dramatic improvement in performance as you add more trees?
-- How dramatic is the improvement? Quantify it with specific numbers.
-- At what point do you see diminishing returns?
-- What does this tell you about the optimal number of trees for this problem?
--->
-
-*[Replace this with your own analysis of the visualizations above]*
-
-#### Analysis: The Dramatic Power of Ensemble Learning
-
-The visualizations reveal compelling insights about how random forests leverage ensemble learning:
-
-**Most Dramatic Improvement:** The most significant performance gains occur between 1 and 25 trees. Moving from a single tree to just 5 trees reduces test RMSE from approximately $57,000 to $37,000 - a dramatic 35% improvement. By 25 trees, we achieve test RMSE around $34,000, capturing most of the potential gains. This demonstrates that even small ensembles can dramatically outperform individual weak learners.
-
-**Diminishing Returns:** After 100 trees, the improvements become incremental. The difference between 100 trees (RMSE ~$33,000) and 5,000 trees (RMSE ~$32,500) is only about 1.5%. The R² plot shows a similar pattern - rapid improvement up to 25-100 trees, then marginal gains thereafter. This suggests that for most practical applications, 100-500 trees provides an optimal balance between performance and computational cost.
-
-**Key Insight:** The gap between training and test RMSE remains relatively stable across all tree counts, indicating that random forests naturally resist overfitting even as we add more trees - a remarkable property we'll explore further in the next section.
 
 ### 2. Overfitting Visualization and Analysis
 
-**Your Task:** Compare decision trees vs random forests in terms of overfitting.
-
-**Create two plots showing:**
-- Decision trees: How performance changes with tree complexity (max depth)
-- Random forests: How performance changes with number of trees
-
-**Your analysis should explain:**
-- Why individual decision trees overfit as they become more complex
-- Why random forests don't suffer from the same overfitting problem
-- The mechanisms that prevent overfitting in random forests (bootstrap sampling, random feature selection, averaging)
-
-::: {.callout-important}
-## 📊 Overfitting Analysis Requirements
-
-Create two comparison plots showing:
-1. **Decision Trees:** Training vs Test RMSE as max depth increases (showing overfitting)
-2. **Random Forests:** Training vs Test RMSE as number of trees increases (no overfitting)
-
-- Use the same y-axis limits for both plots so it clearly shows whether random forests outperform decision trees.
-- Do not `echo` the code that creates the visualization
-:::
-
 ```{r}
-#| label: decision-tree-overfitting
+#| label: overfitting-comparison
 #| echo: false
 #| message: false
 #| warning: false
-#| fig-width: 10
+#| fig-width: 14
 #| fig-height: 6
 
 library(rpart)
+library(gridExtra)
 
 # Train decision trees with different max depths
 depths <- c(1, 3, 5, 10, 15, 20, 25, 30)
@@ -347,14 +285,17 @@ for (depth in depths) {
   ))
 }
 
-# Get y-axis limits to use for both plots
+# Random Forest subset for comparison
+rf_subset <- performance_df[performance_df$Trees %in% c(1, 5, 25, 100, 500, 1000), ]
+
+# Get y-axis limits to use for both plots (ensures alignment)
 y_min <- min(c(dt_results$RMSE_Train, dt_results$RMSE_Test, 
-               performance_df$RMSE_Train, performance_df$RMSE_Test))
+               rf_subset$RMSE_Train, rf_subset$RMSE_Test))
 y_max <- max(c(dt_results$RMSE_Train, dt_results$RMSE_Test, 
-               performance_df$RMSE_Train, performance_df$RMSE_Test))
+               rf_subset$RMSE_Train, rf_subset$RMSE_Test))
 
 # Decision Tree Plot
-ggplot(dt_results) +
+dt_plot <- ggplot(dt_results) +
   geom_line(aes(x = Depth, y = RMSE_Train, color = "Training"), size = 1.2) +
   geom_point(aes(x = Depth, y = RMSE_Train, color = "Training"), size = 3) +
   geom_line(aes(x = Depth, y = RMSE_Test, color = "Test"), size = 1.2) +
@@ -371,29 +312,12 @@ ggplot(dt_results) +
   theme_minimal() +
   theme(
     legend.position = "bottom",
-    plot.title = element_text(face = "bold", size = 14),
+    plot.title = element_text(face = "bold", size = 13),
     panel.grid.minor = element_blank()
   )
-```
 
-```{r}
-#| label: random-forest-no-overfitting
-#| echo: false
-#| message: false
-#| warning: false
-#| fig-width: 10
-#| fig-height: 6
-
-# Random Forest Plot (using subset for comparison)
-rf_subset <- performance_df[performance_df$Trees %in% c(1, 5, 25, 100, 500, 1000), ]
-
-# Get y-axis limits (recompute in this block for independence)
-y_min <- min(c(dt_results$RMSE_Train, dt_results$RMSE_Test, 
-               performance_df$RMSE_Train, performance_df$RMSE_Test))
-y_max <- max(c(dt_results$RMSE_Train, dt_results$RMSE_Test, 
-               performance_df$RMSE_Train, performance_df$RMSE_Test))
-
-ggplot(rf_subset) +
+# Random Forest Plot
+rf_plot <- ggplot(rf_subset) +
   geom_line(aes(x = Trees, y = RMSE_Train, color = "Training"), size = 1.2) +
   geom_point(aes(x = Trees, y = RMSE_Train, color = "Training"), size = 3) +
   geom_line(aes(x = Trees, y = RMSE_Test, color = "Test"), size = 1.2) +
@@ -411,9 +335,12 @@ ggplot(rf_subset) +
   theme_minimal() +
   theme(
     legend.position = "bottom",
-    plot.title = element_text(face = "bold", size = 14),
+    plot.title = element_text(face = "bold", size = 13),
     panel.grid.minor = element_blank()
   )
+
+# Display plots side by side with aligned Y-axes
+grid.arrange(dt_plot, rf_plot, ncol = 2)
 ```
 
 #### Discussion: Your Analysis Here
@@ -427,56 +354,7 @@ Add your analysis here. Consider discussing:
 - What mechanisms prevent overfitting (bootstrap sampling, random feature selection, averaging)?
 -->
 
-*[Replace this with your own analysis comparing decision trees vs random forests]*
-
-#### Analysis: Why Random Forests Resist Overfitting
-
-The comparison reveals a fundamental difference between single decision trees and random forests:
-
-**Decision Trees: The Overfitting Problem** 
-
-As we increase tree depth from 1 to 30, individual decision trees show classic overfitting behavior. Training RMSE drops dramatically (from ~$46,000 to ~$15,000), but test RMSE actually increases after depth 5 (worsening from ~$37,000 to over $45,000). At maximum depth, the tree memorizes the training data rather than learning generalizable patterns. This is the curse of complex models working alone.
-
-**Random Forests: Ensemble Immunity**
-
-In stark contrast, random forests improve both training and test performance simultaneously as we add trees. There's no divergence between the curves - they move together. Even at 1,000 trees, we see no evidence of overfitting. The test RMSE continues to improve or stabilize, never deteriorating.
-
-**Three Mechanisms Preventing Overfitting:**
-
-1. **Bootstrap Sampling:** Each tree trains on a different random sample of the data, ensuring no single tree can perfectly memorize the full dataset
-2. **Random Feature Selection:** Each split considers only a random subset of features (mtry=3), preventing trees from all making the same mistakes
-3. **Democratic Averaging:** The final prediction averages across hundreds of diverse trees, smoothing out individual errors and reducing variance
-
-**The Bottom Line:** Random forests achieve what seems impossible - they get more complex without overfitting. This makes them remarkably robust for real-world applications where we can't perfectly tune model complexity.
-
 ### 3. Linear Regression vs Random Forest Comparison
-
-**Your Task:** Compare random forests to linear regression baseline.
-
-**Create a comparison table showing:**
-- Linear Regression RMSE
-- Random Forest (1 tree) RMSE  
-- Random Forest (100 trees) RMSE
-- Random Forest (1000 trees) RMSE
-
-**Your analysis should address:**
-- The improvement in RMSE when going from 1 tree to 100 trees
-- Whether switching from linear regression to 100-tree random forest shows similar improvement
-- When random forests are worth the added complexity vs linear regression
-- The trade-offs between interpretability and performance
-
-::: {.callout-important}
-## 📊 Comparison Requirements
-
-Create a clear table comparing:
-
-- Linear Regression
-- Random Forest (1 tree)
-- Random Forest (100 trees) 
-- Random Forest (1000 trees)
-
-Include percentage improvements over linear regression for each random forest model.
-:::
 
 ```{r}
 #| label: linear-regression-comparison
@@ -526,32 +404,6 @@ Add your analysis here. Consider discussing:
 - What are the trade-offs between interpretability and performance?
 - For this specific housing price prediction task, which model would you recommend and why?
 -->
-
-*[Replace this with your own analysis of when complexity is worth it]*
-
-#### Analysis: When Is Complexity Worth It?
-
-The comparison table reveals important insights about the value proposition of random forests versus simpler linear models:
-
-**From 1 Tree to 100 Trees:** Moving from a single decision tree to a 100-tree random forest reduces RMSE by approximately 40% - from around $57,000 to $33,000. This represents the pure power of ensemble learning, transforming many weak learners into a strong predictor.
-
-**Linear Regression vs 100-Tree Random Forest:** The improvement here is even more dramatic - roughly 45-50% reduction in RMSE compared to linear regression. This substantial gain comes from random forests' ability to capture non-linear relationships and interactions that linear regression cannot model. For housing prices, where factors like square footage interact with neighborhood characteristics, this non-linear modeling capability is crucial.
-
-**When Random Forests Are Worth the Complexity:**
-
-Random forests justify their added complexity when:
-- **Non-linear relationships matter:** Real estate, customer behavior, and biological systems where interactions dominate
-- **Prediction accuracy is paramount:** When the cost of prediction errors exceeds the cost of model complexity (e.g., medical diagnosis, fraud detection)
-- **Feature engineering is expensive:** Random forests automatically discover interactions, saving analyst time
-
-**When to Stick with Linear Regression:**
-
-Linear models remain valuable when:
-- **Interpretability is critical:** Regulatory environments, credit scoring, or when stakeholders need to understand "why" (linear models provide clear coefficients)
-- **Data is limited:** With small datasets, simple models often generalize better
-- **Relationships are truly linear:** Some domains (e.g., basic physics) have genuinely linear relationships
-
-**The Practical Verdict:** For this housing price prediction task, the 40-50% improvement from random forests clearly justifies the added complexity. The $15,000-20,000 reduction in prediction error translates to real business value. However, if we needed to explain to a homeowner exactly why their house was valued at $250,000, linear regression's interpretability might win despite lower accuracy.
 
 ## Challenge Requirements 📋
 
